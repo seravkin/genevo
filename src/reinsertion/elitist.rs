@@ -9,6 +9,7 @@ use crate::{
     random::Rng,
 };
 use std::marker::PhantomData;
+use rayon::iter::{ParallelDrainRange, ParallelIterator};
 
 /// The `ElitistReinserter` combines the best individuals from the offspring and
 /// the old population. When there are more individuals in the offspring than
@@ -149,11 +150,10 @@ where
             // first pick individuals from offspring
             if num_offspring < offspring.len() {
                 // evaluate fitness of the offspring individuals
-                let mut offspring_fitness: Vec<(G, F)> = Vec::with_capacity(offspring.len());
-                while let Some(child) = offspring.pop() {
-                    let fitness = self.fitness_evaluator.fitness_of(&child);
-                    offspring_fitness.push((child, fitness));
-                }
+                let mut offspring_fitness = offspring.par_drain(..)
+                    .map(|individual| (individual, self.fitness_evaluator.evaluate(&individual)))
+                    .collect::<Vec<_>>();
+
                 // sort offspring from worst to best performing performing
                 offspring_fitness.sort_by(|x, y| x.1.cmp(&y.1));
                 // pick only the best individuals from the offspring
@@ -173,11 +173,9 @@ where
             }
         } else {
             // evaluate fitness of the offspring individuals
-            let mut offspring_fitness: Vec<(G, F)> = Vec::with_capacity(offspring.len());
-            while let Some(child) = offspring.pop() {
-                let fitness = self.fitness_evaluator.fitness_of(&child);
-                offspring_fitness.push((child, fitness));
-            }
+            let mut offspring_fitness = offspring.par_drain(..)
+                .map(|individual| (individual, self.fitness_evaluator.evaluate(&individual)))
+                .collect::<Vec<_>>();
             // sort offspring from worst to best performing performing
             offspring_fitness.sort_by(|x, y| x.1.cmp(&y.1));
             for _ in 0..population_size {
