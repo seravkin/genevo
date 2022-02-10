@@ -120,9 +120,9 @@ where
 
 impl<G, F, E> ReinsertionOp<G, F> for ElitistReinserter<G, F, E>
 where
-    G: Genotype,
-    F: Fitness,
-    E: FitnessFunction<G, F>,
+    G: Genotype + Send + Sync,
+    F: Fitness + Send + Sync,
+    E: FitnessFunction<G, F> + Send + Sync,
 {
     fn combine<R>(
         &self,
@@ -151,7 +151,10 @@ where
             if num_offspring < offspring.len() {
                 // evaluate fitness of the offspring individuals
                 let mut offspring_fitness = offspring.par_drain(..)
-                    .map(|individual| (individual, self.fitness_evaluator.evaluate(&individual)))
+                    .map(|individual| {
+                        let fitness = self.fitness_evaluator.fitness_of(&individual);
+                        (individual, fitness)
+                    })
                     .collect::<Vec<_>>();
 
                 // sort offspring from worst to best performing performing
@@ -174,7 +177,10 @@ where
         } else {
             // evaluate fitness of the offspring individuals
             let mut offspring_fitness = offspring.par_drain(..)
-                .map(|individual| (individual, self.fitness_evaluator.evaluate(&individual)))
+                .map(|individual| {
+                    let fitness = self.fitness_evaluator.fitness_of(&individual);
+                    (individual, fitness)
+                })
                 .collect::<Vec<_>>();
             // sort offspring from worst to best performing performing
             offspring_fitness.sort_by(|x, y| x.1.cmp(&y.1));
