@@ -119,4 +119,6 @@ where
     /// Returns the worst of all theoretically possible `Fitness` values.
     /// This is usually a value equivalent to zero.
     fn lowest_possible_fitness(&self) -> F;
+
+    fn use_parallel_ga(&self) -> bool { true }
 }

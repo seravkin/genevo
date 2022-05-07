@@ -47,6 +47,7 @@ where
     // phantom types
     _g: PhantomData<G>,
     _f: PhantomData<F>,
+    is_parallel: bool,
 }
 
 impl<G, F, E> ElitistReinserter<G, F, E>
@@ -63,7 +64,13 @@ where
             replace_ratio,
             _g: PhantomData,
             _f: PhantomData,
+            is_parallel: false,
         }
+    }
+
+    pub fn as_parallel(mut self) -> Self {
+        self.is_parallel = true;
+        self
     }
 
     /// Returns true if the offspring should take precedence over better
@@ -150,12 +157,21 @@ where
             // first pick individuals from offspring
             if num_offspring < offspring.len() {
                 // evaluate fitness of the offspring individuals
-                let mut offspring_fitness = offspring.par_drain(..)
-                    .map(|individual| {
-                        let fitness = self.fitness_evaluator.fitness_of(&individual);
-                        (individual, fitness)
-                    })
-                    .collect::<Vec<_>>();
+                let mut offspring_fitness = if self.is_parallel {
+                    offspring.par_drain(..)
+                        .map(|individual| {
+                            let fitness = self.fitness_evaluator.fitness_of(&individual);
+                            (individual, fitness)
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    let mut offspring_fitness: Vec<(G, F)> = Vec::with_capacity(offspring.len());
+                    while let Some(child) = offspring.pop() {
+                        let fitness = self.fitness_evaluator.fitness_of(&child);
+                        offspring_fitness.push((child, fitness));
+                    };
+                    offspring_fitness
+                };
 
                 // sort offspring from worst to best performing performing
                 offspring_fitness.sort_by(|x, y| x.1.cmp(&y.1));
@@ -176,12 +192,21 @@ where
             }
         } else {
             // evaluate fitness of the offspring individuals
-            let mut offspring_fitness = offspring.par_drain(..)
-                .map(|individual| {
-                    let fitness = self.fitness_evaluator.fitness_of(&individual);
-                    (individual, fitness)
-                })
-                .collect::<Vec<_>>();
+            let mut offspring_fitness = if self.is_parallel {
+                offspring.par_drain(..)
+                    .map(|individual| {
+                        let fitness = self.fitness_evaluator.fitness_of(&individual);
+                        (individual, fitness)
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                let mut offspring_fitness: Vec<(G, F)> = Vec::with_capacity(offspring.len());
+                while let Some(child) = offspring.pop() {
+                    let fitness = self.fitness_evaluator.fitness_of(&child);
+                    offspring_fitness.push((child, fitness));
+                };
+                offspring_fitness
+            };
             // sort offspring from worst to best performing performing
             offspring_fitness.sort_by(|x, y| x.1.cmp(&y.1));
             for _ in 0..population_size {

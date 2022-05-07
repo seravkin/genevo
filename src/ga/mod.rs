@@ -266,33 +266,53 @@ where
     F: Fitness + Send + Sync,
     E: FitnessFunction<G, F> + Sync,
 {
-    timed(|| population.into_par_iter()
-        .map(|x| evaluator.fitness_of(x))
-        .fold(|| (vec![], evaluator.lowest_possible_fitness(), evaluator.highest_possible_fitness()),
-              |(mut fitness, mut highest, mut lowest), score| {
-            if score > highest {
-                highest = score.clone();
-            }
-            if score < lowest {
-                lowest = score.clone();
-            }
-            fitness.push(score);
+    if evaluator.use_parallel_ga() {
+        timed(|| population.into_par_iter()
+            .map(|x| evaluator.fitness_of(x))
+            .fold(|| (vec![], evaluator.lowest_possible_fitness(), evaluator.highest_possible_fitness()),
+                  |(mut fitness, mut highest, mut lowest), score| {
+                      if score > highest {
+                          highest = score.clone();
+                      }
+                      if score < lowest {
+                          lowest = score.clone();
+                      }
+                      fitness.push(score);
 
+                      (fitness, highest, lowest)
+                  })
+            .reduce_with(|(mut fitness, mut highest, mut lowest), (mut fitness2, highest2, lowest2)| {
+                fitness.append(&mut fitness2);
+                if highest2 > highest {
+                    highest = highest2;
+                }
+                if lowest2 < lowest {
+                    lowest = lowest2;
+                }
+                (fitness, highest, lowest)
+            })
+            .unwrap()
+        )
+            .run()
+    } else {
+        timed(|| {
+            let mut fitness = Vec::with_capacity(population.len());
+            let mut highest = evaluator.lowest_possible_fitness();
+            let mut lowest = evaluator.highest_possible_fitness();
+            for genome in population.iter() {
+                let score = evaluator.fitness_of(genome);
+                if score > highest {
+                    highest = score.clone();
+                }
+                if score < lowest {
+                    lowest = score.clone();
+                }
+                fitness.push(score);
+            }
             (fitness, highest, lowest)
         })
-        .reduce_with(|(mut fitness, mut highest, mut lowest), (mut fitness2, highest2, lowest2)| {
-            fitness.append(&mut fitness2);
-            if highest2 > highest {
-                highest = highest2;
-            }
-            if lowest2 < lowest {
-                lowest = lowest2;
-            }
-            (fitness, highest, lowest)
-        })
-        .unwrap()
-    )
-    .run()
+        .run()
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
