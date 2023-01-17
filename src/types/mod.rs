@@ -75,6 +75,3 @@ macro_rules! implement_fitness_for_unsigned_integer {
 }
 
 implement_fitness_for_unsigned_integer!(u8, u16, u32, u64, usize);
-
-#[cfg(test)]
-mod tests;

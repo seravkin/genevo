@@ -93,12 +93,10 @@ where
     F: FnOnce() -> U,
 {
     pub fn run(self) -> TimedResult<U> {
-        let started_at = Local::now();
         let result = (self.function)();
-        let time = Local::now().signed_duration_since(started_at);
         TimedResult {
             result,
-            time: ProcessingTime::from(time),
+            time: ProcessingTime::from(Duration::seconds(0)),
         }
     }
 }
