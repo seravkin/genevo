@@ -5,7 +5,7 @@ use crate::{
     statistic::{ProcessingTime, TrackProcessingTime},
     termination::{StopFlag, Termination},
 };
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc, Duration};
 use std::{
     error::Error,
     fmt::{self, Debug, Display},
@@ -47,7 +47,7 @@ where
             termination: self.termination,
             run_mode: RunMode::NotRunning,
             rng: get_rng(seed),
-            started_at: Local::now(),
+            started_at: DateTime::default(),
             iteration: 0,
             processing_time: ProcessingTime::zero(),
         }
@@ -139,7 +139,7 @@ where
     termination: T,
     run_mode: RunMode,
     rng: Prng,
-    started_at: DateTime<Local>,
+    started_at: DateTime<Utc>,
     iteration: u64,
     processing_time: ProcessingTime,
 }
@@ -156,18 +156,16 @@ where
 
     /// Processes one iteration of the algorithm used in this simulation.
     fn process_one_iteration(&mut self) -> Result<State<A>, <Self as Simulation<A>>::Error> {
-        let loop_started_at = Local::now();
 
         self.iteration += 1;
         let result = self.algorithm.next(self.iteration, &mut self.rng);
         self.processing_time += self.algorithm.processing_time();
 
-        let loop_duration = Local::now().signed_duration_since(loop_started_at);
         match result {
             Ok(result) => Ok(State {
                 started_at: self.started_at,
                 iteration: self.iteration,
-                duration: loop_duration,
+                duration: Duration::seconds(0),
                 processing_time: self.algorithm.processing_time(),
                 result,
             }),
@@ -200,7 +198,7 @@ where
             }
             RunMode::NotRunning => {
                 self.run_mode = RunMode::Loop;
-                self.started_at = Local::now();
+                self.started_at = DateTime::default();
             }
         }
         let result = loop {
@@ -211,7 +209,7 @@ where
                         StopFlag::Continue => {}
                         StopFlag::StopNow(reason) => {
                             let processing_time = self.processing_time;
-                            let duration = Local::now().signed_duration_since(self.started_at);
+                            let duration = DateTime::<chrono::Utc>::default().signed_duration_since(self.started_at);
                             break Ok(SimResult::Final(state, processing_time, duration, reason));
                         }
                     }
@@ -236,7 +234,7 @@ where
             RunMode::Step => (),
             RunMode::NotRunning => {
                 self.run_mode = RunMode::Step;
-                self.started_at = Local::now();
+                self.started_at = DateTime::default();
             }
         }
         self.process_one_iteration().and_then(|state|
@@ -247,7 +245,7 @@ where
                 },
                 StopFlag::StopNow(reason) => {
                     let processing_time = self.processing_time;
-                    let duration = Local::now().signed_duration_since(self.started_at);
+                    let duration = DateTime::<Utc>::default().signed_duration_since(self.started_at);
                     self.run_mode = RunMode::NotRunning;
                     SimResult::Final(state, processing_time, duration, reason)
                 },

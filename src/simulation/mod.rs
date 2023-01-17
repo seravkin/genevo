@@ -54,7 +54,7 @@ where
     A: Algorithm,
 {
     /// The local time when this simulation started.
-    pub started_at: DateTime<Local>,
+    pub started_at: DateTime<chrono::Utc>,
     /// The number of the iteration that this state represents. Iterations
     /// are counted from 1 and increased by 1 on each iteration of the
     /// simulation loop.

@@ -360,7 +360,6 @@ where
                 )
             });
         BestSolution {
-            found_at: Local::now(),
             generation,
             solution: evaluated,
         }

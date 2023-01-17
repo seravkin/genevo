@@ -17,7 +17,7 @@ use crate::{
     simulation::State,
     termination::{StopFlag, Termination},
 };
-use chrono::{Duration, Local};
+use chrono::{Duration, Local, DateTime};
 use std::marker::PhantomData;
 
 /// The `FitnessLimit` condition stops the simulation after a solution with
@@ -144,7 +144,7 @@ where
     A: Algorithm,
 {
     fn evaluate(&mut self, state: &State<A>) -> StopFlag {
-        let duration = Local::now().signed_duration_since(state.started_at);
+        let duration = DateTime::<chrono::Utc>::default().signed_duration_since(state.started_at);
         if duration >= self.max_time {
             StopFlag::StopNow(format!(
                 "Simulation stopped after running for {} which exceeds the \
